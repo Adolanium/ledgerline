@@ -131,3 +131,12 @@ test('estimateUsd prefers list price (cached tokens at the cache rate), then the
   assert.equal(pure.estimateUsd({ total: 0 }, 'm1', blended, options), null, 'nothing until the session has tokens')
   assert.equal(pure.estimateUsd(null, 'm1', blended, options), null)
 })
+
+test('subagent events without id or task_index reuse the entry with the same goal', () => {
+  const ev = (type, payload) => ({ type, session_id: 'r1', payload })
+  let s = pure.reduceLiveEvent(null, ev('subagent.start', { goal: 'write tests' }))
+  s = pure.reduceLiveEvent(s, ev('subagent.progress', { goal: 'write tests', current_tool: 'terminal' }))
+  s = pure.reduceLiveEvent(s, ev('subagent.complete', { goal: 'write tests', status: 'completed' }))
+  assert.equal(s.subagents.length, 1)
+  assert.equal(s.subagents[0].status, 'completed')
+})

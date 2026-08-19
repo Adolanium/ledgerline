@@ -92,3 +92,11 @@ test('getMessages walks pages until a short page and flags truncation', async ()
   assert.equal(pages.length, 2)
   assert.ok(pages[0].includes('/api/sessions/abc/messages?limit=500&offset=0'))
 })
+
+test('classifyToolResult does not fail a result whose error key is empty', () => {
+  // the word "error" in the text still earns the weak "suspected" tier, never "failed"
+  assert.notEqual(pure.classifyToolResult('write_file', '{"error":null,"message":"created file"}').verdict, 'failed')
+  assert.notEqual(pure.classifyToolResult('write_file', '{"error":"","success":true}').verdict, 'failed')
+  assert.equal(pure.classifyToolResult('write_file', '{"error":"disk full"}').verdict, 'failed')
+  assert.equal(pure.classifyToolResult('write_file', '{"success":false,"message":"nope"}').verdict, 'failed')
+})

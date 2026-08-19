@@ -666,7 +666,7 @@ def write_session(db: SessionDB, template: dict, started: datetime, preset: dict
         last = steps.pop()
         while len(steps) < want - 1:
             tool, args, result = rng.choice(pool)
-            steps.insert(rng.randint(0, len(steps)), (tool, args, r_read(result) if tool == "read_file" else r_terminal(result) if tool == "terminal" else r_search(result.split("\\n"))))
+            steps.insert(rng.randint(0, len(steps)), (tool, args, r_read(result) if tool == "read_file" else r_terminal(result) if tool == "terminal" else r_search(result.split("\n"))))
         steps.append(last)
     api_calls = 0
     total_in = total_out = total_cache = total_cache_w = total_reason = 0

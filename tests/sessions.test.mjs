@@ -177,3 +177,10 @@ test('rowsCacheRate counts writes, respects the window and the profile filter', 
   assert.equal(pure.rowsCacheRate(rows, 30, now, 'b'), 0.1)
   assert.equal(pure.rowsCacheRate([], 30, now), null)
 })
+
+test('sessionCost is $0 for included routes, null when unknown, and fmtUsd never shows a tiny cost as zero', () => {
+  assert.equal(pure.sessionCost({ cost: { actual: null, estimated: 0, status: 'included' } }), 0)
+  assert.equal(pure.sessionCost({ cost: { actual: null, estimated: 0, status: 'unknown' } }), null)
+  assert.equal(pure.fmtUsd(0.00003), '<$0.0001')
+  assert.equal(pure.fmtUsd(0), '$0.00')
+})

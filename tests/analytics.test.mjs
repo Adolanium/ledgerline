@@ -179,3 +179,20 @@ test('combinedBudgets keeps an own budget, else sums the profile budgets and say
   assert.deepEqual(pure.combinedBudgets({ month: null, session: 1 }, per), { month: 150, session: 1, derived: true, parts: [{ profile: 'a', month: 100 }, { profile: 'b', month: 50 }] })
   assert.deepEqual(pure.combinedBudgets(null, []), { month: null, session: null, derived: false, parts: [] })
 })
+
+test('optionRates keeps the first provider for a shared bare id and every slug-prefixed id', () => {
+  const rates = pure.optionRates({ providers: [
+    { slug: 'a', pricing: { shared: { input: '$10', output: '$20' } } },
+    { slug: 'b', pricing: { shared: { input: '$0.10', output: '$0.20' } } }
+  ] })
+  assert.equal(rates.shared.input, 10 / 1_000_000)
+  assert.equal(rates['a/shared'].input, 10 / 1_000_000)
+  assert.equal(rates['b/shared'].input, 0.1 / 1_000_000)
+})
+
+test('budgetState grades a session against the per-session limit', () => {
+  const st = pure.budgetState({ month: null, session: 2 }, null, { cost: { actual: 1.7, estimated: null } })
+  assert.equal(st.session.level, 'near')
+  assert.equal(pure.budgetState({ session: 2 }, null, { cost: { actual: 2.5 } }).session.level, 'over')
+  assert.equal(pure.budgetState({ session: 2 }, null, { cost: { actual: 0.2 } }).session.level, 'ok')
+})

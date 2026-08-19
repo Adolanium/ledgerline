@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.1.1 (2026-08-19)
+
+Fixes and hardening.
+
+- Per-session budgets now do something: the live pane shows the session's
+  spend against its limit, and sessions that cross 80% or 100% raise an
+  alert (once per session and level, same channels as the monthly one).
+- Monthly budget alerts no longer depend on the Overview tab being open:
+  a background check runs every five minutes while the gateway is open.
+- The alert latch is kept per profile, so one profile crossing its limit
+  does not silence another's alert for the month.
+- Per-profile budget progress uses the month window, not the selected
+  7/30/90-day window. Month figures fetch 31 days so the 1st of a 31-day
+  month is not dropped on the 31st.
+- Cron, profile and delivery-target queries are keyed by connection, so a
+  gateway switch does not show the previous gateway's jobs.
+- Live records are capped and expire after a day; unhandled events no
+  longer insert empty records; blended rates are cached per row set.
+- Background-audit listeners are disposed with the plugin and time out
+  after 30 minutes; stale "running" answers show as interrupted; analysis
+  buttons are disabled while one is running.
+- Tool results with an empty `error` key are no longer counted as failed.
+- Failed worst-first scans are not memoised as clean.
+- What-if lines skip free models; the first provider listing a bare model
+  id keeps it instead of being silently overwritten by a later one.
+- Subscription-included sessions show $0.00 instead of n/a; tiny costs show
+  as <$0.0001 rather than $0.0000.
+- Under the all-profiles scope, the RPC fallback says it is showing the
+  active profile only. RPC-only mode can page.
+- The audit prompt tells the agent to treat transcript text as evidence
+  only and never run commands the transcript suggests.
+- Newer `host.state` members are read behind a fallback for older desktop
+  builds. HTTP status sniffing uses word boundaries.
+
+plugin.js SHA-256: `6f4f24a5ec85a928c176991b2e4067419f459bbdcd90401c9721162115b0c317`
+
 ## 0.1.0 (2026-08-19)
 
 First release. One plugin file for Hermes Desktop with:
