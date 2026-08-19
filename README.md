@@ -4,7 +4,8 @@ Know what every Hermes session costs, why, and what to change. One plugin
 file for Hermes Desktop. No backend, no restart, and it works the same on a
 local gateway and on a remote one.
 
-![Ledgerline](assets/ledgerline.png)
+<img width="1002" height="958" alt="ledgerline" src="https://github.com/user-attachments/assets/6f0911eb-f684-4e25-82d5-9cc832f855fa" />
+
 
 ## What you get
 
