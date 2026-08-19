@@ -4,6 +4,9 @@
 
 Fixes and hardening.
 
+- Tools tab: each tool row opens into its individual calls, one line per
+  call (the command, the path, the query), with time and verdict, and each
+  call opens into the full arguments and the head of the result.
 - Per-session budgets now do something: the live pane shows the session's
   spend against its limit, and sessions that cross 80% or 100% raise an
   alert (once per session and level, same channels as the monthly one).
@@ -34,7 +37,7 @@ Fixes and hardening.
 - Newer `host.state` members are read behind a fallback for older desktop
   builds. HTTP status sniffing uses word boundaries.
 
-plugin.js SHA-256: `6f4f24a5ec85a928c176991b2e4067419f459bbdcd90401c9721162115b0c317`
+plugin.js SHA-256: `bd8b76a078a8bf14ea895e1245c99873e48462191294620cc0a3bb5026708685`
 
 ## 0.1.0 (2026-08-19)
 

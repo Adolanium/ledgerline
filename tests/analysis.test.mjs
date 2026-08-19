@@ -100,3 +100,15 @@ test('classifyToolResult does not fail a result whose error key is empty', () =>
   assert.equal(pure.classifyToolResult('write_file', '{"error":"disk full"}').verdict, 'failed')
   assert.equal(pure.classifyToolResult('write_file', '{"success":false,"message":"nope"}').verdict, 'failed')
 })
+
+test('callSummary says what a call did in one line', () => {
+  assert.equal(pure.callSummary('terminal', { command: 'cd ~/code && uv run pytest -q' }), 'cd ~/code && uv run pytest -q')
+  assert.equal(pure.callSummary('read_file', { path: '~/code/src/main.py' }), '~/code/src/main.py')
+  assert.equal(pure.callSummary('search_files', { pattern: 'TODO', workdir: '~/code' }), 'TODO in ~/code')
+  assert.equal(pure.callSummary('delegate_task', { tasks: [{ goal: 'port search' }, { goal: 'write tests' }] }), '2 tasks: port search | write tests')
+  assert.equal(pure.callSummary('web_search', { query: 'restic slow backup' }), 'restic slow backup')
+  assert.equal(pure.callSummary('mystery_tool', { a: 'one', b: 42, c: 'two' }), 'one · two')
+  assert.equal(pure.callSummary('mystery_tool', {}), '')
+  assert.equal(pure.callSummary('terminal', null), '')
+  assert.ok(pure.callSummary('terminal', { command: 'x'.repeat(500) }).length <= 160)
+})

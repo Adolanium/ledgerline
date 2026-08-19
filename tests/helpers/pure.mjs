@@ -40,6 +40,7 @@ export function loadPure() {
     'fmtDuration',
     'fmtWhen',
     'classifyToolResult',
+    'callSummary',
     'analyzeMessages',
     'reduceLiveEvent',
     'blendedRates',

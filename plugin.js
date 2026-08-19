@@ -743,6 +743,38 @@ function filePathOf(name, args) {
   return ''
 }
 
+// One line that says what a call did: the command, the path, the query.
+// Falls back to the first short string arguments, so unknown tools still
+// read as something rather than "{...}".
+function callSummary(name, args) {
+  const a = args && typeof args === 'object' ? args : {}
+  const str = v => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '')
+  const pick = (...keys) => {
+    for (const k of keys) if (str(a[k])) return str(a[k])
+    return ''
+  }
+  let out = ''
+  if (name === 'terminal' || name === 'process') out = pick('command', 'cmd', 'input')
+  else if (FILE_TOOLS.has(name)) {
+    const path = pick('path', 'file_path', 'workdir')
+    const pattern = pick('pattern', 'query')
+    out = name === 'search_files' ? `${pattern}${path ? ` in ${path}` : ''}` : path
+  } else if (name === 'web_search' || name === 'web_extract' || name === 'browser_navigate') out = pick('query', 'url', 'urls')
+  else if (name === 'delegate_task') {
+    const tasks = Array.isArray(a.tasks) ? a.tasks.map(x => str(x && x.goal)).filter(Boolean) : []
+    out = tasks.length ? `${tasks.length} tasks: ${tasks.join(' | ')}` : pick('goal')
+  } else if (name === 'session_search' || name === 'memory' || name === 'skills_list' || name === 'skill_view') out = pick('query', 'content', 'name', 'action')
+  if (!out) {
+    out = Object.values(a)
+      .filter(v => typeof v === 'string' && v.length <= 120)
+      .map(str)
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(' · ')
+  }
+  return out.length > 160 ? `${out.slice(0, 157)}...` : out
+}
+
 // delegate_task results carry one entry per child; goals live in the call args.
 function subagentsFromCall(call) {
   const data = safeJson(typeof call.result === 'string' ? call.result : '') || (call.result && typeof call.result === 'object' ? call.result : null)
@@ -1755,6 +1787,9 @@ const EN = {
   subFailures: 'Failures',
   subFiles: 'Files',
   subSubagents: 'Subagents',
+  callArgs: 'arguments',
+  callResult: 'result',
+  callNoArgs: '(no arguments)',
   noCalls: 'No tool calls in this session.',
   noFailures: 'No failed or suspected tool calls.',
   noFiles: 'No files touched.',
@@ -2446,21 +2481,74 @@ function VerdictBadge({ t, verdict }) {
   return null
 }
 
-function ToolsPane({ t, analysis }) {
-  if (!analysis.breakdown.length) return jsx(Muted, { children: t('noCalls') })
-  return jsx('div', {
-    children: analysis.breakdown.map(b =>
+// One call inside an expanded tool row: when, what, how it went, and on
+// demand the full arguments and the head of the result.
+function CallRow({ t, call }) {
+  const [open, setOpen] = useState(false)
+  const tone = call.verdict === 'failed' ? text.red : call.verdict === 'suspected' ? 'var(--ui-yellow)' : text.secondary
+  const result = typeof call.result === 'string' ? call.result : call.result ? JSON.stringify(call.result, null, 1) : ''
+  return jsxs('div', {
+    style: { padding: '2px 0 2px 12px', borderLeft: '2px solid var(--ui-stroke-tertiary)', marginLeft: 4 },
+    children: [
       jsxs('div', {
-        style: { display: 'flex', gap: 10, alignItems: 'baseline', padding: '2px 0', fontSize: '0.75rem' },
+        style: { display: 'flex', gap: 8, alignItems: 'baseline', fontSize: '0.75rem', cursor: 'pointer' },
+        onClick: () => setOpen(o => !o),
         children: [
-          jsx('span', { style: { fontFamily: mono, color: b.failed ? text.red : text.primary, minWidth: 160 }, children: b.name }),
-          jsx('span', { style: { fontFamily: mono, color: text.secondary }, children: String(b.count) }),
-          b.failed ? jsx('span', { style: { color: text.red }, children: `${b.failed} ${t('failed')}` }) : null,
-          b.suspected ? jsx('span', { style: { color: 'var(--ui-yellow)' }, children: `${b.suspected} ${t('suspected')}` }) : null
+          jsx('span', { style: { color: text.tertiary, minWidth: 56 }, children: fmtWhen(call.timestamp) }),
+          jsx('span', { style: { fontFamily: mono, color: tone, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, children: callSummary(call.name, call.args) || t('callNoArgs') }),
+          jsx(VerdictBadge, { t, verdict: call.verdict })
+        ]
+      }),
+      open
+        ? jsxs('div', { style: { margin: '4px 0 6px' }, children: [
+            jsx('div', { style: { fontSize: '0.6875rem', color: text.tertiary }, children: t('callArgs') }),
+            jsx('pre', { style: { fontFamily: mono, fontSize: '0.6875rem', color: text.secondary, whiteSpace: 'pre-wrap', margin: '2px 0 6px', maxHeight: 200, overflow: 'auto' }, children: JSON.stringify(call.args, null, 1).slice(0, 2000) }),
+            result ? jsx('div', { style: { fontSize: '0.6875rem', color: text.tertiary }, children: t('callResult') }) : null,
+            result ? jsx('pre', { style: { fontFamily: mono, fontSize: '0.6875rem', color: text.secondary, whiteSpace: 'pre-wrap', margin: '2px 0 0', maxHeight: 200, overflow: 'auto' }, children: result.slice(0, 2000) }) : null
+          ] })
+        : null
+    ]
+  })
+}
+
+function ToolsPane({ t, analysis }) {
+  const [open, setOpen] = useState(() => new Set())
+  if (!analysis.breakdown.length) return jsx(Muted, { children: t('noCalls') })
+  const toggle = name => setOpen(prev => {
+    const next = new Set(prev)
+    if (next.has(name)) next.delete(name)
+    else next.add(name)
+    return next
+  })
+  return jsx('div', {
+    children: analysis.breakdown.map(b => {
+      const expanded = open.has(b.name)
+      const calls = expanded ? analysis.calls.filter(c => c.name === b.name) : []
+      return jsxs('div', {
+        children: [
+          jsxs('div', {
+            style: { display: 'flex', gap: 10, alignItems: 'baseline', padding: '2px 0', fontSize: '0.75rem', cursor: 'pointer' },
+            onClick: () => toggle(b.name),
+            children: [
+              jsx('span', { style: { color: text.tertiary, width: 10 }, children: expanded ? '\u25be' : '\u25b8' }),
+              jsx('span', { style: { fontFamily: mono, color: b.failed ? text.red : text.primary, minWidth: 150 }, children: b.name }),
+              jsx('span', { style: { fontFamily: mono, color: text.secondary }, children: String(b.count) }),
+              b.failed ? jsx('span', { style: { color: text.red }, children: `${b.failed} ${t('failed')}` }) : null,
+              b.suspected ? jsx('span', { style: { color: 'var(--ui-yellow)' }, children: `${b.suspected} ${t('suspected')}` }) : null,
+              !expanded ? jsx('span', { style: { color: text.tertiary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, children: lastCallGist(analysis.calls, b.name) }) : null
+            ]
+          }),
+          expanded ? jsx('div', { style: { marginBottom: 4 }, children: calls.map((c, i) => jsx(CallRow, { t, call: c }, `${c.id}-${i}`)) }) : null
         ]
       }, b.name)
-    )
+    })
   })
+}
+
+// Collapsed row hint: the gist of the tool's most recent call.
+function lastCallGist(calls, name) {
+  for (let i = calls.length - 1; i >= 0; i--) if (calls[i].name === name) return callSummary(name, calls[i].args)
+  return ''
 }
 
 function FailureRow({ t, call }) {
